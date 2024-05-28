@@ -136,7 +136,7 @@ def main():
     st.header("Enter the details for candidates")
 
     candidate_names = ["Aun", "Sajjad", "Uma", "Shivani"]
-    default_email = "aunraza@sinecure.ai"
+    default_email = "joel@sinecure.ai"
 
     if 'candidates' not in st.session_state:
         st.session_state.candidates = []
