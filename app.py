@@ -10,36 +10,42 @@ from datetime import datetime
 import requests
 from PIL import Image as PILImage
 from io import BytesIO
-
+from reportlab.graphics.shapes import Drawing, Rect
 
 def send_email(recipient, subject, content, attachment):
     yag = yagmail.SMTP('aunraza021@gmail.com', 'dozjccrjcqdltrbz')
     yag.send(to=recipient, subject=subject, contents=content, attachments=attachment)
 
-def generate_salary_slip_pdf(name, salary, filename, logo_path):
+def generate_salary_slip_pdf(name, salary, filename, logo_url):
     document = SimpleDocTemplate(filename, pagesize=letter)
     styles = getSampleStyleSheet()
     elements = []
 
-    # Add logo
-    if logo_path:
-        logo = Image(logo_path, 2*inch, 1*inch)
-        elements.append(logo)
+    # Download logo
+    response = requests.get(logo_url)
+    img = PILImage.open(BytesIO(response.content))
+    img.save("logo_temp.png")
 
-    # Add title
-    title = Paragraph("Sinecure AI", styles['Title'])
+    # Add logo and title
+    logo = Image("logo_temp.png", 1.5*inch, 1*inch)
+    elements.append(logo)
+    elements.append(Spacer(1, 12))
+    title = Paragraph("<b>Sinecure AI</b>", styles['Title'])
     elements.append(title)
 
-    # Add date
-    current_date = datetime.now().strftime("%B %Y")
-    date_paragraph = Paragraph(f"Date: {current_date}", styles['Normal'])
+    # Add date and designation
+    current_date = datetime.now().strftime("%B %d, %Y")
+    date_paragraph = Paragraph(f"Pay Date: {current_date}", styles['Normal'])
+    designation_paragraph = Paragraph(f"Designation: Software Engineer", styles['Normal'])
     elements.append(date_paragraph)
+    elements.append(designation_paragraph)
     elements.append(Spacer(1, 12))
 
     # Add candidate details in a table
     data = [
         ['Name', name],
-        ['Salary', f"${salary}"],
+        ['Gross Salary', f"${salary}"],
+        ['Basic Salary', f"${salary}"],
     ]
     table = Table(data, colWidths=[2*inch, 4*inch])
     table.setStyle(TableStyle([
@@ -51,11 +57,20 @@ def generate_salary_slip_pdf(name, salary, filename, logo_path):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('BOX', (0, 0), (-1, -1), 2, colors.black),
     ]))
     elements.append(table)
 
-    # Build PDF
-    document.build(elements)
+    # Build PDF with background border
+    def on_page(canvas, doc):
+        canvas.saveState()
+        d = Drawing(550, 700)
+        d.add(Rect(0, 0, 550, 700, strokeColor=colors.black, fillColor=None, strokeWidth=1))
+        d.drawOn(canvas, 0, 0)
+        canvas.restoreState()
+
+    document.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+    os.remove("logo_temp.png")  # Clean up temporary logo file
 
 def main():
     st.set_page_config(page_title="Sinecure AI", page_icon=":moneybag:", layout="centered")
@@ -70,18 +85,19 @@ def main():
             display: flex;
             justify-content: left;
             align-items: center;
-            background-color: #87CEFA;
+            background-color: #4682B4;  /* Slightly more blue */
             padding: 10px;
             border-radius: 10px;
             color: white;
         }
         .header img {
-            max-width: 100px;
+            max-width: 60px;  /* Adjust logo size */
             margin-right: 20px;
         }
         .header h1 {
             font-size: 2.5em;
             margin: 0;
+            margin-left: 50px;  /* Slightly right */
         }
         .container {
             max-width: 700px;
@@ -107,16 +123,10 @@ def main():
 
     # Create the header with a logo
     logo_url = "https://i.ibb.co/yXLFZVV/logo.png"
-    logo_filename = "logo.png"
-    
-    # Download the image
-    response = requests.get(logo_url)
-    img = PILImage.open(BytesIO(response.content))
-    img.save(logo_filename)
 
     st.markdown(f"""
     <div class="header">
-        <img src="{logo_filename}" alt="Logo">
+        <img src="{logo_url}" alt="Logo">
         <h1>Sinecure AI</h1>
     </div>
     """, unsafe_allow_html=True)
@@ -125,7 +135,7 @@ def main():
 
     st.header("Enter the details for candidates")
 
-    candidate_names = ["Sajjad", "Aun", "Uma", "Shivani"]
+    candidate_names = ["Aun", "Sajjad", "Uma", "Shivani"]
     default_email = "aunraza@sinecure.ai"
 
     if 'candidates' not in st.session_state:
@@ -153,7 +163,7 @@ def main():
         if st.button("Send Salary Slips"):
             for candidate in st.session_state.candidates:
                 filename = f"{candidate['name']}_salary_slip.pdf"
-                generate_salary_slip_pdf(candidate['name'], candidate['salary'], filename, logo_filename)
+                generate_salary_slip_pdf(candidate['name'], candidate['salary'], filename, logo_url)
                 slip_content = f"Dear {candidate['name']},\n\nPlease find attached your salary slip for this month.\n\nBest regards,\nSinecure AI"
                 send_email(candidate['email'], "Your Salary Slip", slip_content, filename)
                 os.remove(filename)  # Remove the file after sending email to clean up
@@ -163,3 +173,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
