@@ -133,7 +133,7 @@ def main():
 
     st.markdown('<div class="container">', unsafe_allow_html=True)
 
-    st.header("Enter the details for candidates")
+    st.header("Enter the details for Employees")
 
     candidate_names = ["Aun", "Sajjad", "Uma", "Shivani"]
     default_email = "joel@sinecure.ai"
@@ -146,7 +146,7 @@ def main():
     current_candidate = st.session_state.current_candidate
 
     if current_candidate < 4:
-        st.subheader(f"Candidate {current_candidate + 1}")
+        st.subheader(f"Employee {current_candidate + 1}")
         name = st.selectbox("Select name", candidate_names, key=f"name_{current_candidate}")
         salary = st.number_input("Enter salary", min_value=0, key=f"salary_{current_candidate}")
 
